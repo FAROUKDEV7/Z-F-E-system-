@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiCheckCircle, FiSearch, FiCamera, FiX, FiMessageCircle, FiFilter } from 'react-icons/fi';
+import { FiCheckCircle, FiSearch, FiCamera, FiX, FiMessageCircle, FiFilter, FiZap } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { attendanceAPI } from '../services/api';
 import { useApp } from '../hooks/useApp';
+import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 
 const GRADES = [
   'الصف الأول الابتدائي', 'الصف الثاني الابتدائي', 'الصف الثالث الابتدائي',
@@ -18,6 +19,7 @@ export default function AttendancePage() {
   const [chartData, setChartData] = useState([]);
   const [scanInput, setScanInput] = useState('');
   const [scanResult, setScanResult] = useState(null);
+  const [scannerActive, setScannerActive] = useState(false); // يضيء لما السكانر يستخدم
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterGrade, setFilterGrade] = useState('');
@@ -35,21 +37,35 @@ export default function AttendancePage() {
     setRecords(recs); setStats(s); setChartData(chart);
   };
 
-  const handleScan = async () => {
-    if (!scanInput.trim()) return;
+  // دالة تسجيل الحضور المشتركة بين اليدوي والسكانر
+  const processBarcode = useCallback(async (code) => {
+    if (!code.trim()) return;
     try {
-      const result = await attendanceAPI.markAttendance(scanInput.trim());
+      const result = await attendanceAPI.markAttendance(code.trim());
       setScanResult(result);
       if (result.alreadyMarked) {
-        addToast(`${result.student.name} - تم تسجيل الحضور مسبقاً`, 'warning');
+        addToast(`${result.student.name} — تم تسجيل الحضور مسبقاً`, 'warning');
       } else {
-        addToast(`تم تسجيل حضور ${result.student.name} ✅`);
+        addToast(`✅ تم تسجيل حضور ${result.student.name}`);
         loadData();
       }
     } catch (e) {
       addToast(e.message, 'error');
       setScanResult(null);
     }
+  }, []);
+
+  // جهاز السكانر الحقيقي — يستقبل الباركود من أي مكان في الصفحة
+  useBarcodeScanner(useCallback((code) => {
+    setScannerActive(true);
+    setScanInput(code);
+    setTimeout(() => setScannerActive(false), 800);
+    processBarcode(code);
+  }, [processBarcode]));
+
+  // الكتابة اليدوية في الـ input
+  const handleManualScan = async () => {
+    await processBarcode(scanInput);
     setScanInput('');
     setTimeout(() => inputRef.current?.focus(), 100);
   };
@@ -81,33 +97,76 @@ export default function AttendancePage() {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-        {/* Scanner */}
+        {/* Scanner Card */}
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="zfe-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.2rem' }}>
-            <FiCamera color="var(--primary-light)" size={18} />
-            <h3 style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 700, fontSize: '1rem' }}>مسح الباركود</h3>
+
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FiCamera color="var(--primary-light)" size={18} />
+              <h3 style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 700, fontSize: '1rem' }}>مسح الباركود</h3>
+            </div>
+            {/* مؤشر السكانر */}
+            <motion.div
+              animate={{ opacity: scannerActive ? 1 : 0.35, scale: scannerActive ? 1.1 : 1 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                padding: '0.3rem 0.7rem', borderRadius: 20,
+                background: scannerActive ? 'rgba(16,185,129,0.15)' : 'var(--bg-primary)',
+                border: `1px solid ${scannerActive ? 'rgba(16,185,129,0.4)' : 'var(--border-color)'}`,
+              }}
+            >
+              <motion.div
+                animate={{ opacity: scannerActive ? [1, 0.3, 1] : 0.4 }}
+                transition={{ duration: 0.5, repeat: scannerActive ? 2 : 0 }}
+                style={{ width: 8, height: 8, borderRadius: '50%', background: scannerActive ? '#10b981' : 'var(--text-muted)' }}
+              />
+              <span style={{ fontFamily: 'Cairo, sans-serif', fontSize: '0.72rem', fontWeight: 600, color: scannerActive ? '#10b981' : 'var(--text-muted)' }}>
+                {scannerActive ? 'جاري المسح...' : 'جاهز'}
+              </span>
+            </motion.div>
           </div>
 
+          {/* Input يدوي */}
           <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
             <FiSearch style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               ref={inputRef}
               className="input-zfe"
-              style={{ paddingRight: '2.5rem', textAlign: 'center', fontFamily: 'monospace', fontSize: '1.1rem', letterSpacing: '0.1em' }}
+              style={{
+                paddingRight: '2.5rem', textAlign: 'center',
+                fontFamily: 'monospace', fontSize: '1.1rem', letterSpacing: '0.1em',
+                borderColor: scannerActive ? '#10b981' : undefined,
+                transition: 'border-color 0.3s'
+              }}
               placeholder="ZFE-001"
               value={scanInput}
               onChange={e => setScanInput(e.target.value.toUpperCase())}
-              onKeyDown={e => e.key === 'Enter' && handleScan()}
+              onKeyDown={e => e.key === 'Enter' && handleManualScan()}
               autoFocus
             />
           </div>
-          <button className="btn-zfe btn-primary-zfe" style={{ width: '100%', justifyContent: 'center' }} onClick={handleScan}>
+          <button className="btn-zfe btn-primary-zfe" style={{ width: '100%', justifyContent: 'center' }} onClick={handleManualScan}>
             <FiCheckCircle size={16} /> تسجيل الحضور
           </button>
 
-          <div style={{ marginTop: '1rem', padding: '0.8rem', background: 'var(--bg-primary)', borderRadius: 8, fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'Cairo, sans-serif', lineHeight: 1.8 }}>
-            💡 اكتب كود الباركود واضغط Enter أو زر التسجيل<br/>
-            مثال: ZFE-001, ZFE-002, ZFE-003...
+          {/* تعليمات */}
+          <div style={{
+            marginTop: '1rem', padding: '0.85rem',
+            background: 'var(--bg-primary)', borderRadius: 8,
+            fontSize: '0.78rem', color: 'var(--text-muted)',
+            fontFamily: 'Cairo, sans-serif', lineHeight: 2
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.3rem' }}>
+              <FiZap size={12} color="#10b981" />
+              <span style={{ color: '#10b981', fontWeight: 600 }}>جهاز سكانر USB/Bluetooth</span>
+            </div>
+            وجّه السكانر للباركود — يُسجَّل الحضور تلقائياً فوراً
+            <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>✏️ يدوياً:</span> اكتب الكود واضغط Enter
+              <br />مثال: ZFE-001، ZFE-002...
+            </div>
           </div>
 
           {/* Scan Result */}
