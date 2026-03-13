@@ -295,7 +295,7 @@ export default function AttendancePage() {
                 <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-icon">📋</div><div>لا توجد سجلات</div></div></td></tr>
               ) : records.map((r, i) => (
                 <tr key={r.id}>
-                  <td style={{ fontWeight: 600 }}>{r.studentName}</td>
+                  <td style={{ fontWeight: 600 }}>{r.student_name}</td>
                   <td><span className="badge-zfe badge-primary">{r.grade}</span></td>
                   <td style={{ color: 'var(--text-secondary)' }}>{r.date}</td>
                   <td style={{ color: 'var(--text-secondary)', direction: 'ltr', textAlign: 'right' }}>{r.time || '—'}</td>

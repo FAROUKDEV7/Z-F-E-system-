@@ -39,16 +39,28 @@ export default function StudentsPage() {
     s.name.includes(search) || s.grade.includes(search) || s.barcode.includes(search)
   );
 
+  // camelCase (JS) → snake_case (Django)
+  const toBackend = (f) => ({
+    name:        f.name,
+    grade:       f.grade,
+    parent_name: f.parentName,
+    whatsapp:    f.whatsapp,
+    phone:       f.phone || '',
+    notes:       f.notes || '',
+  });
+
   const handleSubmit = async () => {
-    if (!form.name || !form.grade) { addToast('الاسم والصف مطلوبان', 'error'); return; }
+    if (!form.name)       { addToast('اسم الطالب مطلوب', 'error'); return; }
+    if (!form.parentName) { addToast('اسم ولي الأمر مطلوب', 'error'); return; }
+    if (!form.whatsapp)   { addToast('رقم الواتساب مطلوب', 'error'); return; }
     setLoading(true);
     try {
       if (editId) {
-        await studentsAPI.update(editId, form);
+        await studentsAPI.update(editId, toBackend(form));
         addToast('تم تحديث بيانات الطالب بنجاح');
       } else {
-        await studentsAPI.create(form);
-        addToast('تم إضافة الطالب بنجاح وتم إنشاء الباركود');
+        await studentsAPI.create(toBackend(form));
+        addToast('تم إضافة الطالب بنجاح وتم إنشاء الباركود ✅');
       }
       setShowModal(false); setForm(EMPTY_FORM); setEditId(null);
       loadStudents();
@@ -63,8 +75,16 @@ export default function StudentsPage() {
     loadStudents();
   };
 
+  // snake_case (Django response) → camelCase (JS form)
   const handleEdit = (student) => {
-    setForm({ name: student.name, grade: student.grade, parentName: student.parentName, whatsapp: student.whatsapp, phone: student.phone, notes: student.notes || '' });
+    setForm({
+      name:       student.name,
+      grade:      student.grade,
+      parentName: student.parent_name || student.parentName || '',
+      whatsapp:   student.whatsapp,
+      phone:      student.phone || '',
+      notes:      student.notes || '',
+    });
     setEditId(student.id); setShowModal(true);
   };
 
@@ -75,7 +95,7 @@ export default function StudentsPage() {
       <html dir="rtl"><head>
       <style>
         body { font-family: Cairo, sans-serif; display: flex; justify-content: center; padding: 2rem; }
-        .card { border: 2px solid var(--primary); border-radius: 12px; padding: 1.5rem; text-align: center; width: 300px; }
+        .card { border: 2px solid #1a56db; border-radius: 12px; padding: 1.5rem; text-align: center; width: 300px; }
         h2 { margin: 0 0 0.5rem; font-size: 1.2rem; }
         p { color: #64748b; margin: 0 0 1rem; font-size: 0.85rem; }
         .institute { font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; }
@@ -135,7 +155,7 @@ export default function StudentsPage() {
                     {s.notes && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.notes}</div>}
                   </td>
                   <td><span className="badge-zfe badge-primary">{s.grade}</span></td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{s.parentName}</td>
+                  <td style={{ color: 'var(--text-secondary)' }}>{s.parent_name || s.parentName}</td>
                   <td style={{ color: 'var(--text-secondary)', direction: 'ltr', textAlign: 'right' }}>{s.whatsapp}</td>
                   <td>
                     <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', background: 'var(--bg-primary)', padding: '0.2rem 0.6rem', borderRadius: 6, color: 'var(--accent)' }}>
@@ -144,7 +164,7 @@ export default function StudentsPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <button className="btn-zfe btn-ghost-zfe" style={{ padding: '0.4rem 0.7rem'}} onClick={() => setShowBarcodeModal(s)} title="عرض الباركود">
+                      <button className="btn-zfe btn-ghost-zfe" style={{ padding: '0.4rem 0.7rem' }} onClick={() => setShowBarcodeModal(s)} title="عرض الباركود">
                         🔷
                       </button>
                       <button className="btn-zfe btn-ghost-zfe" style={{ padding: '0.4rem 0.7rem' }} onClick={() => handleEdit(s)}>

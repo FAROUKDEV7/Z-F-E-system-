@@ -290,8 +290,8 @@ export default function OnlineExamsPage() {
                   <tbody>
                     {examResults.map(r => (
                       <tr key={r.id}>
-                        <td style={{ fontWeight: 600 }}>{r.studentName}</td>
-                        <td>{r.score}/{r.totalQuestions}</td>
+                        <td style={{ fontWeight: 600 }}>{r.student_name}</td>
+                        <td>{r.score}/{r.total_questions}</td>
                         <td><span className={`badge-zfe ${r.percentage >= 60 ? 'badge-success' : 'badge-danger'}`}>{r.percentage}%</span></td>
                       </tr>
                     ))}

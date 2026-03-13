@@ -301,7 +301,7 @@ export default function PaymentsPage() {
                 <tr><td colSpan={6}><div className="empty-state"><div className="empty-state-icon">💳</div><div>لا توجد سجلات</div></div></td></tr>
               ) : payments.map(p => (
                 <tr key={p.id}>
-                  <td style={{ fontWeight: 600 }}>{p.studentName}</td>
+                  <td style={{ fontWeight: 600 }}>{p.student_name}</td>
                   <td><span className="badge-zfe badge-primary">{p.grade}</span></td>
                   <td style={{ color: 'var(--text-secondary)' }}>{p.month}</td>
                   <td style={{ fontWeight: 600, color: 'var(--success)' }}>{p.amount} ج.م</td>
@@ -310,7 +310,7 @@ export default function PaymentsPage() {
                       {p.status === 'مدفوع' ? '✅' : '⏳'} {p.status}
                     </span>
                   </td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{p.paymentDate || '—'}</td>
+                  <td style={{ color: 'var(--text-secondary)' }}>{p.payment_date || '—'}</td>
                 </tr>
               ))}
             </tbody>

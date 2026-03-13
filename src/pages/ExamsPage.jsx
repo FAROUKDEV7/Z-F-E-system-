@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiPlus, FiX, FiAlertTriangle, FiFilter } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
-import { examsAPI } from '../services/api';
+import { examsAPI, studentsAPI } from '../services/api';
 import { useApp } from '../hooks/useApp';
 
 const GRADES = [
@@ -12,7 +12,7 @@ const GRADES = [
   'الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي',
 ];
 
-const EMPTY_FORM = { studentName: '', grade: GRADES[0], examName: '', score: '', totalScore: '100', date: new Date().toISOString().split('T')[0] };
+const EMPTY_FORM = { studentId: '', examName: '', score: '', totalScore: '100', date: new Date().toISOString().split('T')[0] };
 
 export default function ExamsPage() {
   const [allResults, setAllResults] = useState([]);
@@ -23,9 +23,10 @@ export default function ExamsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [filterGrade, setFilterGrade] = useState('');
+  const [studentsList, setStudentsList] = useState([]);
   const { addToast } = useApp();
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); studentsAPI.getAll().then(setStudentsList).catch(() => {}); }, []);
 
   useEffect(() => {
     if (filterGrade) {
@@ -41,11 +42,17 @@ export default function ExamsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!form.studentName || !form.examName || !form.score) { addToast('يرجى تعبئة جميع الحقول المطلوبة', 'error'); return; }
+    if (!form.studentId || !form.examName || !form.score) { addToast('يرجى تعبئة جميع الحقول المطلوبة', 'error'); return; }
     if (parseFloat(form.score) > parseFloat(form.totalScore)) { addToast('الدرجة لا يمكن أن تتجاوز الدرجة الكلية', 'error'); return; }
     setLoading(true);
     try {
-      await examsAPI.create({ ...form, score: parseFloat(form.score), totalScore: parseFloat(form.totalScore) });
+      await examsAPI.create({
+        student:     form.studentId,
+        exam_name:   form.examName,
+        score:       parseFloat(form.score),
+        total_score: parseFloat(form.totalScore),
+        date:        form.date || new Date().toISOString().split('T')[0],
+      });
       addToast('تم إضافة نتيجة الامتحان بنجاح');
       setShowModal(false); setForm(EMPTY_FORM); loadData();
     } catch (e) { addToast(e.message, 'error'); }
@@ -54,10 +61,10 @@ export default function ExamsPage() {
 
   const getGrade = (score, total) => {
     const pct = (score / total) * 100;
-    if (pct >= 90) return { label: 'ممتاز', color: 'var(--success)' };
-    if (pct >= 75) return { label: 'جيد جداً', color: 'var(--primary)' };
-    if (pct >= 60) return { label: 'جيد', color: 'var(--warning)' };
-    return { label: 'ضعيف', color: 'var(--danger)' };
+    if (pct >= 90) return { label: 'ممتاز', color: '#10b981' };
+    if (pct >= 75) return { label: 'جيد جداً', color: '#1a56db' };
+    if (pct >= 60) return { label: 'جيد', color: '#f59e0b' };
+    return { label: 'ضعيف', color: '#ef4444' };
   };
 
   return (
@@ -82,7 +89,7 @@ export default function ExamsPage() {
               <XAxis dataKey="subject" tick={{ fontFamily: 'Cairo', fontSize: 11, fill: 'var(--text-muted)' }} />
               <YAxis domain={[0, 100]} tick={{ fontFamily: 'Cairo', fontSize: 11, fill: 'var(--text-muted)' }} />
               <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', fontFamily: 'Cairo', fontSize: 12 }} />
-              <Bar dataKey="avg" fill="var(--primary)" radius={[4, 4, 0, 0]} name="المتوسط" />
+              <Bar dataKey="avg" fill="#1a56db" radius={[4, 4, 0, 0]} name="المتوسط" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -101,8 +108,8 @@ export default function ExamsPage() {
           ) : weakStudents.map(s => (
             <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0', borderBottom: '1px solid var(--border-color)' }}>
               <div>
-                <div style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 600, fontSize: '0.88rem' }}>{s.studentName}</div>
-                <div style={{ fontFamily: 'Cairo, sans-serif', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.examName}</div>
+                <div style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 600, fontSize: '0.88rem' }}>{s.student_name || s.studentName}</div>
+                <div style={{ fontFamily: 'Cairo, sans-serif', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.exam_name || s.examName}</div>
               </div>
               <span className="badge-zfe badge-danger">{s.percentage}%</span>
             </div>
@@ -144,11 +151,11 @@ export default function ExamsPage() {
           {/* Grade summary badges */}
           {filterGrade && (() => {
             const avg = results.length > 0
-              ? Math.round(results.reduce((s, r) => s + (r.score / r.totalScore) * 100, 0) / results.length)
+              ? Math.round(results.reduce((s, r) => s + (r.score / (r.total_score || r.totalScore || 100)) * 100, 0) / results.length)
               : 0;
-            const excellent = results.filter(r => (r.score / r.totalScore) >= 0.9).length;
-            const good      = results.filter(r => (r.score / r.totalScore) >= 0.6 && (r.score / r.totalScore) < 0.9).length;
-            const weak      = results.filter(r => (r.score / r.totalScore) < 0.6).length;
+            const excellent = results.filter(r => (r.score / (r.total_score || r.totalScore || 100)) >= 0.9).length;
+            const good      = results.filter(r => (r.score / (r.total_score || r.totalScore || 100)) >= 0.6 && (r.score / (r.total_score || r.totalScore || 100)) < 0.9).length;
+            const weak      = results.filter(r => (r.score / (r.total_score || r.totalScore || 100)) < 0.6).length;
             return (
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
@@ -183,13 +190,13 @@ export default function ExamsPage() {
             <tbody>
               {results.map(r => {
                 const g = getGrade(r.score, r.totalScore);
-                const pct = Math.round((r.score / r.totalScore) * 100);
+                const pct = Math.round((r.score / (r.total_score || r.totalScore || 100)) * 100);
                 return (
                   <tr key={r.id}>
-                    <td style={{ fontWeight: 600 }}>{r.studentName}</td>
+                    <td style={{ fontWeight: 600 }}>{r.student_name || r.studentName}</td>
                     <td><span className="badge-zfe badge-primary">{r.grade}</span></td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{r.examName}</td>
-                    <td style={{ fontWeight: 700 }}>{r.score}/{r.totalScore}</td>
+                    <td style={{ color: 'var(--text-secondary)' }}>{r.exam_name || r.examName}</td>
+                    <td style={{ fontWeight: 700 }}>{r.score}/{r.total_score || r.totalScore}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <div style={{ flex: 1, height: 6, background: 'var(--bg-primary)', borderRadius: 3, overflow: 'hidden', minWidth: 60 }}>
@@ -219,8 +226,13 @@ export default function ExamsPage() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label className="form-label">اسم الطالب *</label>
-                  <input className="input-zfe" value={form.studentName} onChange={e => setForm({ ...form, studentName: e.target.value })} />
+                  <label className="form-label">الطالب *</label>
+                  <select className="input-zfe" value={form.studentId} onChange={e => setForm({ ...form, studentId: e.target.value })}>
+                    <option value="">-- اختر الطالب --</option>
+                    {studentsList.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} — {s.grade}</option>
+                    ))}
+                  </select>
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label className="form-label">الصف الدراسي</label>
