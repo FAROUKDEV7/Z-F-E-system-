@@ -43,7 +43,8 @@ export default function PaymentsPage() {
       if (result.alreadyPaid) {
         addToast(`${result.student.name} — تم سداد المصاريف مسبقاً`, 'warning');
       } else {
-        addToast(`✅ تم تسجيل دفع مصاريف ${result.student.name}`);
+        const waMsg = result.whatsappSent ? ' — ✅ تم إرسال واتساب' : '';
+        addToast(`✅ تم تسجيل دفع مصاريف ${result.student.name}${waMsg}`);
         loadData();
       }
     } catch (e) {
@@ -187,8 +188,13 @@ export default function PaymentsPage() {
                       {scanResult.student?.name}
                     </div>
                     {!scanResult.alreadyPaid && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.78rem', color: '#10b981' }}>
-                        <FiMessageCircle size={12} /> تم إرسال إشعار لولي الأمر
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.8rem',
+                        color: scanResult.whatsappSent ? '#25D366' : 'var(--text-muted)',
+                        fontFamily: 'Cairo, sans-serif' }}>
+                        <FiMessageCircle size={13} />
+                        {scanResult.whatsappSent
+                          ? '✅ تم إرسال واتساب لولي الأمر'
+                          : 'لا يوجد رقم واتساب'}
                       </div>
                     )}
                   </div>
@@ -301,7 +307,7 @@ export default function PaymentsPage() {
                 <tr><td colSpan={6}><div className="empty-state"><div className="empty-state-icon">💳</div><div>لا توجد سجلات</div></div></td></tr>
               ) : payments.map(p => (
                 <tr key={p.id}>
-                  <td style={{ fontWeight: 600 }}>{p.student_name}</td>
+                  <td style={{ fontWeight: 600 }}>{p.student_name || p.studentName}</td>
                   <td><span className="badge-zfe badge-primary">{p.grade}</span></td>
                   <td style={{ color: 'var(--text-secondary)' }}>{p.month}</td>
                   <td style={{ fontWeight: 600, color: 'var(--success)' }}>{p.amount} ج.م</td>
@@ -310,7 +316,7 @@ export default function PaymentsPage() {
                       {p.status === 'مدفوع' ? '✅' : '⏳'} {p.status}
                     </span>
                   </td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{p.payment_date || '—'}</td>
+                  <td style={{ color: 'var(--text-secondary)' }}>{p.payment_date || p.paymentDate || '—'}</td>
                 </tr>
               ))}
             </tbody>

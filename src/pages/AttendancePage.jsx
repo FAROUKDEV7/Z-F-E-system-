@@ -46,7 +46,8 @@ export default function AttendancePage() {
       if (result.alreadyMarked) {
         addToast(`${result.student.name} — تم تسجيل الحضور مسبقاً`, 'warning');
       } else {
-        addToast(`✅ تم تسجيل حضور ${result.student.name}`);
+        const waMsg = result.whatsappSent ? ' — ✅ تم إرسال واتساب' : '';
+        addToast(`✅ تم تسجيل حضور ${result.student.name}${waMsg}`);
         loadData();
       }
     } catch (e) {
@@ -193,9 +194,16 @@ export default function AttendancePage() {
                       {scanResult.student?.name}<br/>
                       {scanResult.grade || scanResult.student?.grade}
                     </div>
-                    {!scanResult.alreadyMarked && scanResult.whatsappSent && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.78rem', color: '#10b981' }}>
-                        <FiMessageCircle size={12} /> تم إرسال رسالة واتساب لولي الأمر
+                    {!scanResult.alreadyMarked && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.8rem',
+                        color: scanResult.whatsappSent ? '#25D366' : 'var(--text-muted)',
+                        fontFamily: 'Cairo, sans-serif' }}>
+                        <FiMessageCircle size={13} />
+                        {scanResult.whatsappSent
+                          ? '✅ تم إرسال واتساب لولي الأمر'
+                          : scanResult.student?.whatsapp
+                            ? '⏳ جاري الإرسال...'
+                            : 'لا يوجد رقم واتساب'}
                       </div>
                     )}
                   </div>
@@ -295,7 +303,7 @@ export default function AttendancePage() {
                 <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-icon">📋</div><div>لا توجد سجلات</div></div></td></tr>
               ) : records.map((r, i) => (
                 <tr key={r.id}>
-                  <td style={{ fontWeight: 600 }}>{r.student_name}</td>
+                  <td style={{ fontWeight: 600 }}>{r.student_name || r.studentName}</td>
                   <td><span className="badge-zfe badge-primary">{r.grade}</span></td>
                   <td style={{ color: 'var(--text-secondary)' }}>{r.date}</td>
                   <td style={{ color: 'var(--text-secondary)', direction: 'ltr', textAlign: 'right' }}>{r.time || '—'}</td>
