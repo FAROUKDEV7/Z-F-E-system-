@@ -61,10 +61,10 @@ export default function ExamsPage() {
 
   const getGrade = (score, total) => {
     const pct = (score / total) * 100;
-    if (pct >= 90) return { label: 'ممتاز', color: '#10b981' };
-    if (pct >= 75) return { label: 'جيد جداً', color: '#1a56db' };
-    if (pct >= 60) return { label: 'جيد', color: '#f59e0b' };
-    return { label: 'ضعيف', color: '#ef4444' };
+    if (pct >= 90) return { label: 'ممتاز', color: 'var(--primary)' };
+    if (pct >= 75) return { label: 'جيد جداً', color: 'var(--success)' };
+    if (pct >= 60) return { label: 'جيد', color: 'var(--warning)' };
+    return { label: 'ضعيف', color: 'var(--danger)' };
   };
 
   return (
@@ -89,7 +89,7 @@ export default function ExamsPage() {
               <XAxis dataKey="subject" tick={{ fontFamily: 'Cairo', fontSize: 11, fill: 'var(--text-muted)' }} />
               <YAxis domain={[0, 100]} tick={{ fontFamily: 'Cairo', fontSize: 11, fill: 'var(--text-muted)' }} />
               <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', fontFamily: 'Cairo', fontSize: 12 }} />
-              <Bar dataKey="avg" fill="#1a56db" radius={[4, 4, 0, 0]} name="المتوسط" />
+              <Bar dataKey="avg" fill="var(--primary)" radius={[4, 4, 0, 0]} name="المتوسط" />
             </BarChart>
           </ResponsiveContainer>
         </div>

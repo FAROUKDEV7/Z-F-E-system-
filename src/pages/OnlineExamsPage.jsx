@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiX, FiLink, FiCopy, FiClock, FiPlay, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiX, FiCopy, FiClock, FiPlay, FiTrash2 } from 'react-icons/fi';
 import { onlineExamsAPI } from '../services/api';
 import { useApp } from '../hooks/useApp';
 
@@ -12,11 +12,9 @@ export default function OnlineExamsPage() {
   const [examResults, setExamResults] = useState([]);
   const { addToast } = useApp();
 
-  // Create form state
   const [examForm, setExamForm] = useState({ title: '', subject: '', grade: '', duration: 30, totalScore: 100 });
   const [questions, setQuestions] = useState([{ text: '', choices: ['', '', '', ''], correct: 0 }]);
 
-  // Take exam state
   const [studentName, setStudentName] = useState('');
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
@@ -60,7 +58,14 @@ export default function OnlineExamsPage() {
 
   const handleCreateExam = async () => {
     if (!examForm.title || questions.some(q => !q.text)) { addToast('يرجى تعبئة جميع البيانات', 'error'); return; }
-    const exam = await onlineExamsAPI.create({ ...examForm, questions });
+    const exam = await onlineExamsAPI.create({
+      title:       examForm.title,
+      subject:     examForm.subject,
+      grade:       examForm.grade,
+      duration:    examForm.duration,
+      total_score: examForm.totalScore,
+      questions,
+    });
     setExams([...exams, exam]);
     addToast('تم إنشاء الامتحان بنجاح 🎉');
     setShowCreate(false);
@@ -100,8 +105,8 @@ export default function OnlineExamsPage() {
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', fontFamily: 'Cairo, sans-serif', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
               <span>⏱️ {exam.duration} دقيقة</span>
-              <span>📊 {exam.totalScore} درجة</span>
-              <span>📅 {exam.createdAt}</span>
+              <span>📊 {exam.total_score || exam.totalScore} درجة</span>
+              <span>📅 {exam.created_at || exam.createdAt}</span>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button className="btn-zfe btn-primary-zfe" style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={() => setTakeExam(exam)}>
@@ -137,7 +142,6 @@ export default function OnlineExamsPage() {
                 <span>إنشاء امتحان جديد</span>
                 <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setShowCreate(false)}><FiX /></button>
               </div>
-              {/* Exam Info */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label className="form-label">عنوان الامتحان *</label>
@@ -158,7 +162,6 @@ export default function OnlineExamsPage() {
                   <input className="input-zfe" type="number" min="1" value={examForm.totalScore} onChange={e => setExamForm({ ...examForm, totalScore: parseInt(e.target.value) })} />
                 </div>
               </div>
-              {/* Questions */}
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <span style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 700, fontSize: '0.95rem' }}>الأسئلة ({questions.length})</span>
@@ -179,11 +182,9 @@ export default function OnlineExamsPage() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                         {q.choices.map((ch, ci) => (
                           <div key={ci} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                            <input
-                              type="radio" name={`q${qi}`} checked={q.correct === ci}
+                            <input type="radio" name={`q${qi}`} checked={q.correct === ci}
                               onChange={() => updateQuestion(qi, 'correct', ci)}
-                              style={{ accentColor: 'var(--success)', cursor: 'pointer' }}
-                            />
+                              style={{ accentColor: 'var(--success)', cursor: 'pointer' }} />
                             <input className="input-zfe" style={{ padding: '0.4rem 0.6rem', fontSize: '0.82rem' }} value={ch} onChange={e => updateChoice(qi, ci, e.target.value)} placeholder={`الخيار ${ci + 1}`} />
                           </div>
                         ))}

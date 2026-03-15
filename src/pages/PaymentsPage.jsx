@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiCheckCircle, FiDollarSign, FiMessageCircle, FiX, FiFilter, FiZap } from 'react-icons/fi';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { FiCheckCircle, FiDollarSign, FiMessageCircle, FiX, FiFilter, FiZap } from 'react-icons/fi';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { paymentsAPI } from '../services/api';
 import { useApp } from '../hooks/useApp';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
@@ -21,20 +21,21 @@ export default function PaymentsPage() {
   const [scannerActive, setScannerActive] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterGrade, setFilterGrade] = useState('');
+  const [filterMonth, setFilterMonth] = useState('');
+  const [filterYear, setFilterYear] = useState('');
   const { addToast } = useApp();
   const inputRef = useRef();
 
-  useEffect(() => { loadData(); }, [filterStatus, filterGrade]);
+  useEffect(() => { loadData(); }, [filterStatus, filterGrade, filterMonth, filterYear]);
 
   const loadData = async () => {
     const [pays, s] = await Promise.all([
-      paymentsAPI.getAll({ status: filterStatus || undefined, grade: filterGrade || undefined }),
+      paymentsAPI.getAll({ status: filterStatus || undefined, grade: filterGrade || undefined, month: filterMonth || undefined, year: filterYear || undefined }),
       paymentsAPI.getStats()
     ]);
     setPayments(pays); setStats(s);
   };
 
-  // دالة الدفع المشتركة
   const processBarcode = useCallback(async (code) => {
     if (!code.trim()) return;
     try {
@@ -52,7 +53,6 @@ export default function PaymentsPage() {
     }
   }, []);
 
-  // جهاز السكانر الحقيقي
   useBarcodeScanner(useCallback((code) => {
     setScannerActive(true);
     setScanInput(code);
@@ -60,7 +60,6 @@ export default function PaymentsPage() {
     processBarcode(code);
   }, [processBarcode]));
 
-  // كتابة يدوية
   const handleManualScan = async () => {
     await processBarcode(scanInput);
     setScanInput('');
@@ -101,14 +100,11 @@ export default function PaymentsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
         {/* Scanner Card */}
         <motion.div className="zfe-card" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-
-          {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <FiDollarSign color="var(--primary)" size={18} />
               <h3 style={{ fontFamily: 'Cairo, sans-serif', fontWeight: 700, fontSize: '1rem' }}>مسح باركود المصاريف</h3>
             </div>
-            {/* مؤشر السكانر */}
             <motion.div
               animate={{ opacity: scannerActive ? 1 : 0.35, scale: scannerActive ? 1.1 : 1 }}
               transition={{ duration: 0.2 }}
@@ -130,14 +126,12 @@ export default function PaymentsPage() {
             </motion.div>
           </div>
 
-          {/* Input يدوي */}
           <input
             ref={inputRef}
             className="input-zfe"
             style={{
               textAlign: 'center', fontFamily: 'monospace', fontSize: '1.1rem', marginBottom: '0.75rem',
-              borderColor: scannerActive ? '#10b981' : undefined,
-              transition: 'border-color 0.3s'
+              borderColor: scannerActive ? '#10b981' : undefined, transition: 'border-color 0.3s'
             }}
             placeholder="ZFE-001"
             value={scanInput}
@@ -149,7 +143,6 @@ export default function PaymentsPage() {
             <FiCheckCircle size={16} /> تسجيل الدفع
           </button>
 
-          {/* تعليمات */}
           <div style={{
             marginTop: '1rem', padding: '0.85rem',
             background: 'var(--bg-primary)', borderRadius: 8,
@@ -169,9 +162,7 @@ export default function PaymentsPage() {
           <AnimatePresence>
             {scanResult && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                 style={{
                   marginTop: '1rem', padding: '1rem',
                   background: scanResult.alreadyPaid ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)',
@@ -188,17 +179,19 @@ export default function PaymentsPage() {
                       {scanResult.student?.name}
                     </div>
                     {!scanResult.alreadyPaid && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', fontSize: '0.8rem',
-                        color: scanResult.whatsappSent ? '#25D366' : 'var(--text-muted)',
-                        fontFamily: 'Cairo, sans-serif' }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem',
+                        fontSize: '0.8rem', fontFamily: 'Cairo, sans-serif',
+                        color: scanResult.whatsappSent ? '#25D366' : 'var(--text-muted)'
+                      }}>
                         <FiMessageCircle size={13} />
-                        {scanResult.whatsappSent
-                          ? '✅ تم إرسال واتساب لولي الأمر'
-                          : 'لا يوجد رقم واتساب'}
+                        {scanResult.whatsappSent ? '✅ تم إرسال واتساب لولي الأمر' : 'لا يوجد رقم واتساب'}
                       </div>
                     )}
                   </div>
-                  <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setScanResult(null)}><FiX size={14} /></button>
+                  <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setScanResult(null)}>
+                    <FiX size={14} />
+                  </button>
                 </div>
               </motion.div>
             )}
@@ -212,7 +205,8 @@ export default function PaymentsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
               <ResponsiveContainer width={200} height={200}>
                 <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={75} dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     <Cell fill="#10b981" />
                     <Cell fill="#ef4444" />
                   </Pie>
@@ -222,11 +216,11 @@ export default function PaymentsPage() {
               <div style={{ fontFamily: 'Cairo, sans-serif' }}>
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>المبلغ المحصل</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981' }}>{stats.totalAmount.toLocaleString()} ج.م</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981' }}>{stats.totalAmount?.toLocaleString()} ج.م</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>المبلغ المتبقي</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ef4444' }}>{stats.pendingAmount.toLocaleString()} ج.م</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ef4444' }}>{stats.pendingAmount?.toLocaleString()} ج.م</div>
                 </div>
               </div>
             </div>
@@ -237,7 +231,6 @@ export default function PaymentsPage() {
       {/* Table */}
       <div className="zfe-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-          {/* Filter controls */}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: filterGrade ? '0.85rem' : 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontFamily: 'Cairo, sans-serif', fontSize: '0.82rem' }}>
               <FiFilter size={14} /> تصفية:
@@ -251,29 +244,37 @@ export default function PaymentsPage() {
               <option value="">كل الصفوف</option>
               {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
-            {(filterGrade || filterStatus) && (
+            <select className="input-zfe" style={{ width: 150 }} value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
+              <option value="">كل الشهور</option>
+              {['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'].map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+            <select className="input-zfe" style={{ width: 110 }} value={filterYear} onChange={e => setFilterYear(e.target.value)}>
+              <option value="">كل السنين</option>
+              {Array.from({ length: 10 }, (_, i) => 2026 + i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            {(filterGrade || filterStatus || filterMonth || filterYear) && (
               <button
                 className="btn-zfe btn-ghost-zfe"
                 style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem' }}
-                onClick={() => { setFilterGrade(''); setFilterStatus(''); }}
+                onClick={() => { setFilterGrade(''); setFilterStatus(''); setFilterMonth(''); setFilterYear(''); }}
               >
                 <FiX size={13} /> مسح الفلاتر
               </button>
             )}
           </div>
 
-          {/* Grade summary badges */}
           {filterGrade && (() => {
-            const paid   = payments.filter(p => p.status === 'مدفوع').length;
-            const unpaid = payments.filter(p => p.status === 'غير مدفوع').length;
-            const total  = payments.length;
+            const paid     = payments.filter(p => p.status === 'مدفوع').length;
+            const unpaid   = payments.filter(p => p.status === 'غير مدفوع').length;
+            const total    = payments.length;
             const totalAmt = paid * 500;
             return (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}
-              >
+              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ fontFamily: 'Cairo, sans-serif', fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-light)' }}>
                   📚 {filterGrade}
                 </span>
@@ -282,14 +283,13 @@ export default function PaymentsPage() {
                 <span className="badge-zfe badge-danger">⏳ غير مدفوع: {unpaid}</span>
                 <span className="badge-zfe badge-warning">💰 محصّل: {totalAmt.toLocaleString()} ج.م</span>
                 {total > 0 && (
-                  <span className="badge-zfe badge-primary">
-                    نسبة التحصيل: {Math.round((paid / total) * 100)}%
-                  </span>
+                  <span className="badge-zfe badge-primary">نسبة التحصيل: {Math.round((paid / total) * 100)}%</span>
                 )}
               </motion.div>
             );
           })()}
         </div>
+
         <div style={{ overflowX: 'auto' }}>
           <table className="table-zfe">
             <thead>

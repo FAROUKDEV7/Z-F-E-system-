@@ -13,7 +13,11 @@ const GRADES = [
   'الصف الأول الثانوي', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي',
 ];
 
-const EMPTY_FORM = { name: '', grade: GRADES[0], parentName: '', whatsapp: '', phone: '', notes: '' };
+const DAYS = [
+  { key:'sat', label:'السبت' }, { key:'sun', label:'الأحد' }, { key:'mon', label:'الاثنين' },
+  { key:'tue', label:'الثلاثاء' }, { key:'wed', label:'الأربعاء' }, { key:'thu', label:'الخميس' }, { key:'fri', label:'الجمعة' },
+];
+const EMPTY_FORM = { name: '', grade: GRADES[0], parentName: '', whatsapp: '', phone: '', notes: '', scheduleDays: [], scheduleTime: '' };
 
 export default function StudentsPage() {
   const [students, setStudents] = useState([]);
@@ -39,14 +43,15 @@ export default function StudentsPage() {
     s.name.includes(search) || s.grade.includes(search) || s.barcode.includes(search)
   );
 
-  // camelCase (JS) → snake_case (Django)
   const toBackend = (f) => ({
-    name:        f.name,
-    grade:       f.grade,
-    parent_name: f.parentName,
-    whatsapp:    f.whatsapp,
-    phone:       f.phone || '',
-    notes:       f.notes || '',
+    name:          f.name,
+    grade:         f.grade,
+    parent_name:   f.parentName,
+    whatsapp:      f.whatsapp,
+    phone:         f.phone || '',
+    notes:         f.notes || '',
+    schedule_days: Array.isArray(f.scheduleDays) ? f.scheduleDays.join(',') : (f.scheduleDays || ''),
+    schedule_time: f.scheduleTime || null,
   });
 
   const handleSubmit = async () => {
@@ -75,15 +80,16 @@ export default function StudentsPage() {
     loadStudents();
   };
 
-  // snake_case (Django response) → camelCase (JS form)
   const handleEdit = (student) => {
     setForm({
-      name:       student.name,
-      grade:      student.grade,
-      parentName: student.parent_name || student.parentName || '',
-      whatsapp:   student.whatsapp,
-      phone:      student.phone || '',
-      notes:      student.notes || '',
+      name:         student.name,
+      grade:        student.grade,
+      parentName:   student.parent_name || student.parentName || '',
+      whatsapp:     student.whatsapp,
+      phone:        student.phone || '',
+      notes:        student.notes || '',
+      scheduleDays: student.schedule_days ? student.schedule_days.split(',').filter(Boolean) : [],
+      scheduleTime: student.schedule_time || '',
     });
     setEditId(student.id); setShowModal(true);
   };
@@ -213,6 +219,45 @@ export default function StudentsPage() {
                   <label className="form-label">ملاحظات</label>
                   <textarea className="input-zfe" rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} style={{ resize: 'vertical' }} />
                 </div>
+
+                {/* أيام الحضور */}
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label">📅 أيام الحضور</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.3rem' }}>
+                    {DAYS.map(d => {
+                      const active = (form.scheduleDays || []).includes(d.key);
+                      return (
+                        <button key={d.key} type="button"
+                          onClick={() => {
+                            const days = active
+                              ? (form.scheduleDays || []).filter(x => x !== d.key)
+                              : [...(form.scheduleDays || []), d.key];
+                            setForm({ ...form, scheduleDays: days });
+                          }}
+                          style={{
+                            padding: '0.35rem 0.85rem', borderRadius: 20, border: 'none',
+                            cursor: 'pointer', fontFamily: 'Cairo, sans-serif', fontSize: '0.82rem',
+                            fontWeight: active ? 700 : 400,
+                            background: active ? 'var(--primary)' : 'var(--bg-primary)',
+                            color: active ? 'white' : 'var(--text-secondary)',
+                            boxShadow: active ? '0 2px 8px rgba(26,86,219,0.3)' : 'inset 0 0 0 1px var(--border-color)',
+                            transition: 'all 0.15s',
+                          }}>
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* وقت الحصة */}
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label">⏰ وقت الحصة (بعد انتهائه بـ 15 دقيقة يُسجَّل الغياب تلقائياً)</label>
+                  <input className="input-zfe" type="time" value={form.scheduleTime || ''}
+                    onChange={e => setForm({ ...form, scheduleTime: e.target.value })}
+                    style={{ maxWidth: 180 }} />
+                </div>
+
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
                 <button className="btn-zfe btn-ghost-zfe" onClick={() => setShowModal(false)}>إلغاء</button>

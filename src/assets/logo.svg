@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 523.4 523.4">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+        font-family: ArialRoundedMTBold, 'Arial Rounded MT Bold';
+        font-size: 404.31px;
+      }
+
+      .cls-2 {
+        fill: #2dd4bf;
+      }
+    </style>
+  </defs>
+  <rect class="cls-2" width="523.4" height="523.4" rx="81.91" ry="81.91"/>
+  <text class="cls-1" transform="translate(165.65 369.05)"><tspan x="0" y="0">z</tspan></text>
+</svg>

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { FiSun, FiMoon, FiSave, FiBell, FiInfo, FiMessageSquare, FiRefreshCw, FiSend } from 'react-icons/fi';
 import { useApp } from '../hooks/useApp';
-import api, { paymentsAPI } from '../services/api'
+import api, { paymentsAPI } from '../services/api';
 
 const Toggle = ({ checked, onChange, label }) => (
   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
@@ -37,18 +37,17 @@ export default function SettingsPage() {
     whatsapp_absent: false,
     whatsapp_unpaid: false,
   });
-  const [waReady, setWaReady]       = useState(false);
-  const [waChecking, setWaChecking] = useState(false);
-  const [testPhone, setTestPhone]   = useState('');
+  const [waReady, setWaReady]         = useState(false);
+  const [waChecking, setWaChecking]   = useState(false);
+  const [testPhone, setTestPhone]     = useState('');
   const [testSending, setTestSending] = useState(false);
+  const [creatingPayments, setCreatingPayments] = useState(false);
   const pollRef = useRef(null);
 
   useEffect(() => {
-    // تحميل الإعدادات من Django
     paymentsAPI.getSettings()
       .then(data => { setSettings(data); setLoading(false); })
       .catch(() => setLoading(false));
-    // فحص واتساب عبر Django (مش مباشرة)
     checkWa();
     return () => clearInterval(pollRef.current);
   }, []);
@@ -84,6 +83,16 @@ export default function SettingsPage() {
       addToast('✅ تم حفظ الإعدادات بنجاح');
     } catch (e) { addToast(e.message || 'خطأ في الحفظ', 'error'); }
     finally { setSaving(false); }
+  };
+
+  const createMonthlyPayments = async () => {
+    if (!confirm('هل تريد إنشاء مصاريف الشهر الحالي لكل الطلاب؟')) return;
+    setCreatingPayments(true);
+    try {
+      await api.post('/payments/create-monthly/');
+      addToast('✅ تم إنشاء مصاريف الشهر الحالي لكل الطلاب');
+    } catch (e) { addToast(e.message || 'خطأ', 'error'); }
+    finally { setCreatingPayments(false); }
   };
 
   const sendTest = async () => {
@@ -164,6 +173,21 @@ export default function SettingsPage() {
           </div>
         </motion.div>
 
+        {/* مصاريف الشهر */}
+        <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.08 }} className="zfe-card">
+          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'1rem' }}>
+            <span style={{ fontSize:'1.2rem' }}>💰</span>
+            <h3 style={{ fontFamily:'Cairo,sans-serif', fontWeight:700, fontSize:'1rem' }}>مصاريف الشهر</h3>
+          </div>
+          <p style={{ fontFamily:'Cairo,sans-serif', fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:'1rem' }}>
+            النظام بيعمل مصاريف الشهر الجديد تلقائياً كل أول الشهر.
+            لو عايز تعملها يدوياً دلوقتي اضغط الزرار.
+          </p>
+          <button className="btn-zfe btn-primary-zfe" onClick={createMonthlyPayments} disabled={creatingPayments}>
+            💰 {creatingPayments ? 'جاري الإنشاء...' : `إنشاء مصاريف ${new Date().toLocaleString('ar-EG', { month: 'long', year: 'numeric' })}`}
+          </button>
+        </motion.div>
+
         {/* إعداد الواتساب */}
         <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.1 }} className="zfe-card">
           <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'1.2rem' }}>
@@ -179,7 +203,6 @@ export default function SettingsPage() {
             </span>
           </div>
 
-          {/* رقم المعهد */}
           <div className="form-group">
             <label className="form-label">📱 رقم واتساب المعهد (المُرسِل)</label>
             <input className="input-zfe" dir="ltr" style={{ textAlign:'left' }}
@@ -191,7 +214,6 @@ export default function SettingsPage() {
             </small>
           </div>
 
-          {/* حالة الـ Node service */}
           <div style={{
             background: waReady ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.07)',
             border: `1px solid ${waReady ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.2)'}`,
@@ -221,7 +243,6 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* فحص + اختبار */}
           <div style={{ display:'flex', gap:'0.5rem', alignItems:'center', flexWrap:'wrap' }}>
             <button className="btn-zfe btn-ghost-zfe" onClick={checkWa} disabled={waChecking} style={{ fontSize:'0.82rem' }}>
               <FiRefreshCw size={13}/> {waChecking ? 'جاري الفحص...' : 'فحص الاتصال'}
